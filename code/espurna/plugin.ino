@@ -1,14 +1,17 @@
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
+#include <WiFiClientSecureBearSSL.h>
 
 void syncFromElectricitymap()
 {
-    HTTPClient client;
-    client.begin("http://api.electricitymap.org/v3/power-consumption-breakdown/latest/");
-    client.addHeader("auth-token", EMAP_TOKEN);
-    int statusCode = client.GET();
-    String payload = client.getString();
+    BearSSL::WiFiClientSecure secure;
+    secure.setInsecure();
+    HTTPClient http;
+    http.begin(secure, "api.electricitymap.org", 443, "/v3/power-consumption-breakdown/latest", false);
+    http.addHeader("auth-token", EMAP_TOKEN);
+    int statusCode = http.GET();
+    String payload = http.getString();
     DEBUG_MSG_P(PSTR("[GreenLight] Status Code: %i\n"), statusCode);
 
     DynamicJsonBuffer jsonBuffer(1000);
@@ -24,7 +27,8 @@ void syncFromElectricitymap()
 
     DEBUG_MSG_P(PSTR("[GreenLight] zone: %s\n"), zone.c_str());
     DEBUG_MSG_P(PSTR("[GreenLight] fossilFreePercentage: %i\n"), fossilFreePercentage);
-    client.end();
+    http.end();
+    secure.stop();
 
     if (fossilFreePercentage > 90)
     {

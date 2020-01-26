@@ -163,7 +163,7 @@
 #define ALEXA_SUPPORT          0
 //#define API_SUPPORT            0
 //#define BROKER_SUPPORT         0
-//#define BUTTON_SUPPORT         0
+#define BUTTON_SUPPORT         0
 //#define DEBUG_SERIAL_SUPPORT   0
 //#define DEBUG_TELNET_SUPPORT   0
 //#define DEBUG_UDP_SUPPORT      1
@@ -177,7 +177,7 @@
 //#define LED_SUPPORT            0
 //#define LLMNR_SUPPORT          1  // Only with latest Arduino Core
 //#define MDNS_CLIENT_SUPPORT    1
-//#define MDNS_SERVER_SUPPORT    0
+#define MDNS_SERVER_SUPPORT    0
 #define MQTT_SUPPORT           0
 //#define NETBIOS_SUPPORT        1  // Only with latest Arduino Core
 //#define NOFUSS_SUPPORT         1
@@ -192,7 +192,7 @@
 //#define TELNET_SUPPORT         0
 //#define TERMINAL_SUPPORT       0
 #define THINGSPEAK_SUPPORT     0
-//#define TUYA_SUPPORT           0
+#define TUYA_SUPPORT           0
 //#define UART_MQTT_SUPPORT      1
 //#define WEB_SUPPORT            0
 #define USE_EXTRA           1

@@ -3,12 +3,19 @@
 #include <Ticker.h>
 #include <WiFiClientSecureBearSSL.h>
 
-void syncFromElectricitymap()
+void _changeColor(const char * color)
 {
+    lightColor(color, false);
+    lightUpdate(true, true);
+}
+
+void callElectricitymap()
+{
+    DEBUG_MSG_P(PSTR("[GreenLight] Calling electricityMap...\n"));
     BearSSL::WiFiClientSecure secure;
     secure.setInsecure();
     HTTPClient http;
-    http.begin(secure, "api.electricitymap.org", 443, "/v3/power-consumption-breakdown/latest", false);
+    http.begin(secure, "api.co2signal.com", 443, "/v1/latest?countryCode=DK-DK2", true);
     http.addHeader("auth-token", EMAP_TOKEN);
     int statusCode = http.GET();
     String payload = http.getString();
@@ -22,88 +29,59 @@ void syncFromElectricitymap()
         return;
     }
 
-    int fossilFreePercentage = root["fossilFreePercentage"];
-    String zone = root["zone"];
+    float fossilFuelPercentage = root["data"]["fossilFuelPercentage"];
+    String zone = root["countryCode"];
 
     DEBUG_MSG_P(PSTR("[GreenLight] zone: %s\n"), zone.c_str());
-    DEBUG_MSG_P(PSTR("[GreenLight] fossilFreePercentage: %i\n"), fossilFreePercentage);
+    DEBUG_MSG_P(PSTR("[GreenLight] fossilFuelPercentage: %f\n"), fossilFuelPercentage);
     http.end();
-    secure.stop();
 
-    if (fossilFreePercentage > 90)
-    {
-        lightColor("100,100,100", false);
-        lightUpdate(true, true);
-    }
-    else if (fossilFreePercentage > 85)
-    {
-        lightColor("50,100,100", false);
-        lightUpdate(true, true);
-    }
-    else if (fossilFreePercentage > 80)
-    {
-        lightColor("25,100,100", false);
-        lightUpdate(true, true);
-    }
-    else if (fossilFreePercentage > 70)
-    {
-        lightColor("15,100,100", false);
-        lightUpdate(true, true);
-    }
+    if (fossilFuelPercentage < 10)
+        _changeColor("100,100,100");
+    else if (fossilFuelPercentage < 15)
+        _changeColor("50,100,100");
+    else if (fossilFuelPercentage < 20)
+        _changeColor("25,100,100");
+    else if (fossilFuelPercentage < 30)
+        _changeColor("15,100,100");
     else
-    {
-        lightColor("0,100,100", false);
-        lightUpdate(true, true);
-    }
+        _changeColor("0,100,100");
 }
 
-Ticker _timer;
+Ticker _connectionTimer;
+Ticker _syncTimer;
 
 void noConnection()
 {
-    lightColor("270,100,100", false);
-    lightUpdate(true, true);
+    _changeColor("270,100,100");
     relayStatus(0, true, false, false);
-    _timer.attach(1, []() {
-        lightColor("270,100,100", false);
-        lightUpdate(true, true);
+    _connectionTimer.attach(1, []() {
+        _changeColor("270,100,100");
         relayStatus(0, !relayStatus(0), false, false);
     });
 }
 
 void extraSetup()
 {
-    espurnaRegisterLoop([]() {
-        static auto last = millis();
-        if (millis() - last > 10000)
-        {
-            last = millis();
-            DEBUG_MSG_P(PSTR("[GreenLight] Ping\n"));
-        }
-    });
-    
     noConnection();
 
     wifiRegister([](justwifi_messages_t message, char *parameter) {
         if (MESSAGE_CONNECTED == message)
         {
-            _timer.detach();
-            lightColor("300,100,100", false);
-            lightUpdate(true, true);
+            _connectionTimer.detach();
+            _changeColor("300,100,100");
             relayStatus(0, true, false, false);
 
             DEBUG_MSG_P(PSTR("[GreenLight] - wifi is connected\n"));
-            syncFromElectricitymap();
-
-            espurnaRegisterLoop([]() {
-                static auto last = millis();
-                if (millis() - last > 300000)
-                {
-                    last = millis();
-                    syncFromElectricitymap();
-                }
+            callElectricitymap();
+            _syncTimer.attach(360, []() {
+                callElectricitymap();
             });
-        } else {
+        }
+        else
+        {
+            _syncTimer.detach();
+            DEBUG_MSG_P(PSTR("[GreenLight] - lost connection\n"));
             noConnection();
         }
     });

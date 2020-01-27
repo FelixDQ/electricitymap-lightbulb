@@ -50,6 +50,7 @@ void callElectricitymap()
 
 Ticker _connectionTimer;
 Ticker _syncTimer;
+Ticker _restartTimer;
 
 void noConnection()
 {
@@ -68,6 +69,7 @@ void extraSetup()
     wifiRegister([](justwifi_messages_t message, char *parameter) {
         if (MESSAGE_CONNECTED == message)
         {
+            _restartTimer.detach();
             _connectionTimer.detach();
             _changeColor("300,100,100");
             relayStatus(0, true, false, false);
@@ -83,6 +85,10 @@ void extraSetup()
             _syncTimer.detach();
             DEBUG_MSG_P(PSTR("[GreenLight] - lost connection\n"));
             noConnection();
+            _restartTimer.once(300, []() {
+                DEBUG_MSG_P(PSTR("[GreenLight] - Rebooting...\n"));
+                deferredReset(100, CUSTOM_RESET_TERMINAL);
+            });
         }
     });
 }

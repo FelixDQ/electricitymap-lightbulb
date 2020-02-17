@@ -1,7 +1,11 @@
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
-#include <WiFiClientSecureBearSSL.h>
+
+#ifndef EMAP_TOKEN
+#define EMAP_TOKEN "INSERT-TOKEN-HERE"
+#endif
+String EMAP_ZONE = "DK-DK2";
 
 void _changeColor(const char *color)
 {
@@ -12,12 +16,9 @@ void _changeColor(const char *color)
 void callElectricitymap()
 {
     DEBUG_MSG_P(PSTR("[GreenLight] Calling electricityMap...\n"));
-
-    static std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
-    client->setInsecure(); // TODO: Validate SSL
     HTTPClient http;
 
-    if (http.begin(*client, "https://api.co2signal.com/v1/latest?countryCode=DK-DK2"))
+    if (http.begin("http://api.co2signal.com/v1/latest?countryCode=" + EMAP_ZONE))
     {
         http.addHeader("auth-token", EMAP_TOKEN);
 
@@ -39,7 +40,7 @@ void callElectricitymap()
             String zone = root["countryCode"];
 
             DEBUG_MSG_P(PSTR("[GreenLight] zone: %s\n"), zone.c_str());
-            DEBUG_MSG_P(PSTR("[GreenLight] fossilFuelPercentage: %d\n"), fossilFuelPercentage);
+            DEBUG_MSG_P(PSTR("[GreenLight] fossilFuelPercentage: %s\n"), String(fossilFuelPercentage).c_str());
 
             if (fossilFuelPercentage < 10)
                 _changeColor("100,100,100");
@@ -111,7 +112,7 @@ void extraSetup()
 
     espurnaRegisterLoop([]() {
         static auto last = millis();
-        if (millis() - last > 1000 * 300 || millis() < last) // case number two is when millis overflow (after ~50 days)
+        if (millis() - last > 1000 * 60 * 5 || millis() < last) // millis() < last is when millis overflow (after ~50 days)
         {
             last = millis();
 
